@@ -1,0 +1,5 @@
+{"sessionId":"12a7e6","location":"config/db.js:4","message":"DATABASE_URL check","data":{"hasUrl":true,"urlPrefix":"postgresql://postgres.omvzqwna..."},"timestamp":1775904230150,"hypothesisId":"H1"}
+{"sessionId":"12a7e6","location":"config/db.js:22","message":"Pool created successfully","data":{"poolTotalCount":0},"timestamp":1775904230158,"hypothesisId":"H4"}
+{"sessionId":"12a7e6","location":"config/db.js:39","message":"testConnection: attempting pool.connect","data":{},"timestamp":1775904230162,"hypothesisId":"H2,H3"}
+{"sessionId":"12a7e6","location":"config/db.js:43","message":"testConnection: pool.connect succeeded, running SELECT NOW()","data":{},"timestamp":1775904230956,"hypothesisId":"H5"}
+{"sessionId":"12a7e6","location":"config/db.js:47","message":"testConnection: SELECT NOW() succeeded","data":{"now":"2026-04-11T10:43:51.027Z"},"timestamp":1775904231078,"hypothesisId":"H5"}

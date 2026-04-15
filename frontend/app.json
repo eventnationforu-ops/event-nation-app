@@ -1,0 +1,28 @@
+{
+  "expo": {
+    "name": "Event Nation",
+    "slug": "event-nation",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "event-nation",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.eventnation.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#1a1a2e"
+      },
+      "package": "com.eventnation.app"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
+    "plugins": [
+      "expo-router"
+    ]
+  }
+}
