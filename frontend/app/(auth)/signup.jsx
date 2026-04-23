@@ -30,8 +30,12 @@ export default function SignupScreen() {
       setError('All fields are required');
       return;
     }
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters');
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters');
+      return;
+    }
+    if (!/\d/.test(password)) {
+      setError('Password must contain at least 1 number');
       return;
     }
     if (password !== confirmPassword) {
@@ -67,7 +71,7 @@ export default function SignupScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.header}>
-          <Text style={styles.brand}>Event Nation</Text>
+          <Text style={styles.brand}>Event Nation FOR YOU</Text>
           <Text style={styles.subtitle}>Create your account</Text>
         </View>
 
@@ -107,7 +111,7 @@ export default function SignupScreen() {
             style={styles.input}
             value={password}
             onChangeText={setPassword}
-            placeholder="Minimum 6 characters"
+            placeholder="Min 8 chars, at least 1 number"
             placeholderTextColor={COLORS.textMuted}
             secureTextEntry
             editable={!loading}
