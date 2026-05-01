@@ -7,6 +7,7 @@ const { errorHandler } = require('./middleware/errorHandler');
 const { testConnection } = require('./config/db');
 
 // Route imports
+const authRoutes = require('./routes/authRoutes');
 const eventRoutes = require('./routes/eventRoutes');
 const packageRoutes = require('./routes/packageRoutes');
 const bookingRoutes = require('./routes/bookingRoutes');
@@ -28,11 +29,12 @@ app.get('/health', (req, res) => {
 });
 
 // API routes
-app.use('/events', eventRoutes);
-app.use('/packages', packageRoutes);
-app.use('/booking', bookingRoutes);
-app.use('/tickets', ticketRoutes);
-app.use('/admin', adminRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/events', eventRoutes);
+app.use('/api/packages', packageRoutes);
+app.use('/api/bookings', bookingRoutes);
+app.use('/api/tickets', ticketRoutes);
+app.use('/api/admin', adminRoutes);
 
 // 404 handler
 app.use((req, res) => {

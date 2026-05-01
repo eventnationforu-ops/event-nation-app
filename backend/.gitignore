@@ -1,8 +1,9 @@
-node_modules/
-.env
 node_modules
 .env
-.env.local
+.env.*
+dist
+build
+.cursor
+.cursor-expl
+*.log
 .DS_Store
-.cursor-exp
-.claude
