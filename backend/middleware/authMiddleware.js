@@ -54,6 +54,7 @@ async function requireAuth(req, _res, next) {
       role: decoded.role || 'authenticated',
       roles: roles.map((r) => r.role),
     };
+    req.token = token;
 
     next();
   } catch (err) {
