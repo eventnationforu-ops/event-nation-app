@@ -1,58 +1,63 @@
-const jwt = require('jsonwebtoken');
-const userRoleModel = require('../models/userRoleModel');
+const { supabaseAdmin, supabaseFromToken } = require('../config/supabase');
 const { AppError } = require('./errorHandler');
-
-const JWT_SECRET = process.env.SUPABASE_JWT_SECRET;
-
-if (!JWT_SECRET) {
-  console.error('FATAL: SUPABASE_JWT_SECRET is not set in .env');
-  process.exit(1);
-}
 
 /**
  * Extract and verify a Supabase JWT from the Authorization header.
  *
- * On success, attaches the decoded token payload to req.user:
+ * Validation is delegated to the Supabase JS client (`auth.getUser`) which
+ * handles both legacy HS256 and current asymmetric (ES256/RS256) tokens
+ * via the project's JWKS endpoint. This is the recommended approach as of
+ * Supabase's 2025 asymmetric JWT migration.
+ *
+ * On success, attaches:
  *   - req.user.sub  → Supabase auth.users UUID
  *   - req.user.id   → alias for sub (convenience)
  *   - req.user.email
  *   - req.user.role → Supabase role claim (e.g. "authenticated")
- *   - req.user.roles → application-level roles from user_roles table
+ *   - req.user.roles → application-level roles from public.user_roles
+ *   - req.token     → raw JWT, for forwarding to per-request Supabase clients
  */
 async function requireAuth(req, _res, next) {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      throw new AppError('Authentication required — missing or malformed Authorization header', 401);
+      throw new AppError(
+        'Authentication required — missing or malformed Authorization header',
+        401
+      );
     }
 
     const token = authHeader.split(' ')[1];
 
-    let decoded;
-    try {
-      decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
-    } catch (err) {
-      const message =
-        err.name === 'TokenExpiredError'
-          ? 'Token expired — please sign in again'
-          : 'Invalid authentication token';
-      console.warn(`[AUTH] JWT verification failed: ${err.name} — ${err.message}`);
-      throw new AppError(message, 401);
+    const { data, error } = await supabaseAdmin.auth.getUser(token);
+    if (error || !data?.user) {
+      const msg = error?.message || 'Invalid authentication token';
+      const isExpired = /expired|jwt expired/i.test(msg);
+      console.warn(`[AUTH] Token verification failed: ${msg}`);
+      throw new AppError(
+        isExpired ? 'Token expired — please sign in again' : 'Invalid authentication token',
+        401
+      );
     }
 
-    if (!decoded.sub) {
-      console.warn('[AUTH] JWT missing sub claim');
-      throw new AppError('Invalid token payload', 401);
-    }
+    const supaUser = data.user;
+    const userClient = supabaseFromToken(token);
+    const { data: roleRows, error: roleErr } = await userClient
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', supaUser.id);
 
-    const roles = await userRoleModel.findByUserId(decoded.sub);
+    if (roleErr) {
+      console.error(`[AUTH] Failed to load roles for ${supaUser.id}: ${roleErr.message}`);
+      throw new AppError('Failed to resolve user roles', 500);
+    }
 
     req.user = {
-      sub: decoded.sub,
-      id: decoded.sub,
-      email: decoded.email || null,
-      role: decoded.role || 'authenticated',
-      roles: roles.map((r) => r.role),
+      sub: supaUser.id,
+      id: supaUser.id,
+      email: supaUser.email || null,
+      role: supaUser.role || 'authenticated',
+      roles: (roleRows || []).map((r) => r.role),
     };
     req.token = token;
 
