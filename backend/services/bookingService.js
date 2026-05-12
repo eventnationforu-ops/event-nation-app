@@ -34,7 +34,7 @@ const bookingService = {
 
     const { event_id, package_id, members, user_name, phone, email } = body;
 
-    const event = await eventModel.findById(event_id);
+    const event = await eventModel.findPublishedById(event_id);
     if (!event) throw new AppError('Event not found', 404);
 
     const pkg = await packageModel.findById(package_id);

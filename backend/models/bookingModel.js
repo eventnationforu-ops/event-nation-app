@@ -5,8 +5,8 @@ const bookingModel = {
     const { user_id, user_name, phone, email, event_id, package_id, subtotal, gst, total } = data;
     const result = await client.query(
       `INSERT INTO bookings
-         (user_id, user_name, phone, email, event_id, package_id, subtotal, gst, total, status, payment_status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'pending', 'unpaid')
+         (user_id, user_name, phone, email, event_id, package_id, subtotal, gst, total, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'pending')
        RETURNING *`,
       [user_id || null, user_name, phone, email, event_id, package_id, subtotal, gst, total]
     );
