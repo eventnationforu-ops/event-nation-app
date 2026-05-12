@@ -1,5 +1,7 @@
-import { createContext, useContext, useEffect, useState, useMemo } from 'react';
+import { createContext, useContext, useEffect, useState, useMemo, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
+
+const API_BASE = 'https://event-nation-backend.onrender.com/api';
 
 const AuthContext = createContext(null);
 
@@ -10,52 +12,66 @@ export function AuthProvider({ children }) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  async function loadProfile(userId) {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle();
+      if (error) {
+        // profiles table may not exist yet; treat as no profile
+        setProfile(null);
+        return;
+      }
+      setProfile(data ?? null);
+    } catch {
+      setProfile(null);
+    }
+  }
+
+  async function checkAdminRole(userId) {
+    try {
+      const { data } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userId)
+        .eq('role', 'admin')
+        .maybeSingle();
+      setIsAdmin(!!data);
+    } catch {
+      setIsAdmin(false);
+    }
+  }
+
+  async function hydrateUser(currentSession) {
+    setSession(currentSession);
+    setUser(currentSession?.user ?? null);
+
+    if (currentSession?.user) {
+      // Fire and forget — these enrich state but never block sign-in.
+      // Supabase session validity is the source of truth for auth.
+      loadProfile(currentSession.user.id).catch(() => {});
+      checkAdminRole(currentSession.user.id).catch(() => {});
+    } else {
+      setProfile(null);
+      setIsAdmin(false);
+    }
+  }
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session: s } }) => {
-      setSession(s);
-      setUser(s?.user ?? null);
-      if (s?.user) {
-        loadProfile(s.user.id);
-        checkAdminRole(s.user.id);
-      }
-      setLoading(false);
+      hydrateUser(s).finally(() => setLoading(false));
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, s) => {
-        setSession(s);
-        setUser(s?.user ?? null);
-        if (s?.user) {
-          loadProfile(s.user.id);
-          checkAdminRole(s.user.id);
-        } else {
-          setProfile(null);
-          setIsAdmin(false);
-        }
+        hydrateUser(s);
       }
     );
 
     return () => subscription.unsubscribe();
   }, []);
-
-  async function loadProfile(userId) {
-    const { data } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
-    setProfile(data);
-  }
-
-  async function checkAdminRole(userId) {
-    const { data } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', userId)
-      .eq('role', 'admin')
-      .maybeSingle();
-    setIsAdmin(!!data);
-  }
 
   async function signIn(email, password) {
     const { data, error } = await supabase.auth.signInWithPassword({
@@ -77,13 +93,30 @@ export function AuthProvider({ children }) {
   }
 
   async function signOut() {
+    const token = session?.access_token;
+    if (token) {
+      try {
+        await fetch(`${API_BASE}/auth/logout`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      } catch {
+        // Non-critical — Supabase handles actual token invalidation
+      }
+    }
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
   }
 
-  async function refreshProfile() {
-    if (user) await loadProfile(user.id);
-  }
+  const refreshUser = useCallback(async () => {
+    const { data: { session: s } } = await supabase.auth.getSession();
+    if (s?.user) {
+      await Promise.all([
+        loadProfile(s.user.id),
+        checkAdminRole(s.user.id),
+      ]);
+    }
+  }, []);
 
   const value = useMemo(
     () => ({
@@ -95,9 +128,9 @@ export function AuthProvider({ children }) {
       signIn,
       signUp,
       signOut,
-      refreshProfile,
+      refreshUser,
     }),
-    [session, user, profile, isAdmin, loading]
+    [session, user, profile, isAdmin, loading, refreshUser]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
